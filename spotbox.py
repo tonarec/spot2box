@@ -30,7 +30,8 @@ def main():
 
     # Check arguments for rekordbox
     path = args.rekordbox_path
-    if args.rekordbox_file is None and path is None:
+    xml = args.rekordbox_file
+    if xml is None and path is None:
         logging.error(
             'Set the Rekordbox installation path and/or a rekordbox.xml file')
         sys.exit(0)
@@ -41,8 +42,14 @@ def main():
             logging.error('File %s is not a valid SpotDL file', spotdl_file)
             sys.exit(0)
 
-    wrapper = RekordboxWrapper(path)
+    wrapper = RekordboxWrapper(xml)
     wrapper.print_playlists()
+    playlists = wrapper.get_playlists('HOUSE')
+    for playlist in playlists:
+        logging.info(playlist.Name)
+    test_playlist = wrapper.get_or_create_playlist('TEST')
+    test2_playlist = wrapper.get_or_create_playlist('TEST')
+    print()
 
 
 if __name__ == '__main__':
