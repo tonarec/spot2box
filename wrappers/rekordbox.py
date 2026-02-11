@@ -2,8 +2,8 @@
 import logging
 import os
 import signal
-import sys
 import time
+from pathlib import Path
 
 import psutil
 import pyrekordbox
@@ -62,14 +62,25 @@ class RekordboxWrapper():
                                           Genre=djm_genre)
         except ValueError:
             logging.info('Track already exists in database')
+            return
 
         logging.info('Added new track to database: %s', path)
         logging.debug('  Title: %s', content.Title)
         logging.debug('  Artist: %s', content.ArtistName)
         logging.debug('  Genre: %s', content.Genre)
 
-    def remove_track_from_database(self, uri: str):
-        pass
+    def remove_track_from_database(self, path: str):
+        path = Path(path)
+        path_string = str(path)
+
+        content = self.db.get_content(FolderPath=path_string)
+        result = content.first()
+        if not result:
+            logging.warning('File to remove not found: %s', path)
+            return
+
+        self.db.delete(result)
+        logging.info('Track removed from database: %s', path)
 
     ############
     # Content
@@ -106,7 +117,7 @@ class RekordboxWrapper():
             return result
 
         album = self.db.add_album(name, artist_id)
-        logging.debug('Created artist %s (%s) in database', name, album.ID)
+        logging.debug('Created album %s (%s) in database', name, album.ID)
         return album
 
     def get_or_create_genre(self, name: str) -> DjmdGenre:
