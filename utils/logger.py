@@ -2,6 +2,7 @@
 import logging
 import sys
 from datetime import datetime
+
 from utils import info
 
 
@@ -15,7 +16,7 @@ def init_logger(level: int = logging.INFO):
     filepath = './logs/' + filename
 
     logging.basicConfig(level=level,
-                        format='%(asctime)s,%(msecs)03d [%(module)8s] %(levelname)7s - %(message)s',
+                        format='%(asctime)s | %(levelname)-7s | %(module)-9s |  %(message)s',
                         datefmt="%Y-%m-%d %H:%M:%S",
                         handlers=[
                             logging.FileHandler(filepath),
@@ -34,5 +35,5 @@ def __compute_filename():
     Returns:
         str: Filename formatted as 'log_YYYYMMDD_HHMMSS.log'
     """
-    log_filename = 'log_' + datetime.now().strftime("%Y%m%d_%H%M%S") + '.log'
+    log_filename = 'spotbox_' + datetime.now().strftime("%Y%m%d") + '.log'
     return log_filename
