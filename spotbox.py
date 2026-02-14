@@ -3,6 +3,7 @@
 import argparse
 import logging
 import sys
+
 from utils import logger
 from wrappers.rekordbox import RekordboxWrapper
 
@@ -44,12 +45,8 @@ def main():
 
     wrapper = RekordboxWrapper(xml)
     wrapper.print_playlists()
-    playlists = wrapper.get_playlists('HOUSE')
-    for playlist in playlists:
-        logging.info(playlist.Name)
-    test_playlist = wrapper.get_or_create_playlist('TEST')
-    test2_playlist = wrapper.get_or_create_playlist('TEST')
-    print()
+    wrapper.print_artists()
+    wrapper.print_albums()
 
 
 if __name__ == '__main__':
