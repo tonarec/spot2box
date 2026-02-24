@@ -1,4 +1,5 @@
 """Module that hanlde a wrapper for Rekordbox"""
+
 import logging
 import os
 import signal
@@ -35,11 +36,9 @@ class RekordboxWrapper():
     # Playlist
     ############
     def add_track_to_playlist(self, path: str, playlist_name: str, pos: int = None):
-        path = Path(path)
-        path_string = str(path)
 
         # Get the track content
-        content = self._db.get_content(FolderPath=path_string).first()
+        content = self.get_track_in_database(path)
         if not content:
             logging.warning('Track path not found: %s', path)
             return
@@ -60,7 +59,7 @@ class RekordboxWrapper():
 
     def remove_track_from_playlist(self, path: str, playlist_name: str):
         path = Path(path)
-        path_string = str(path)
+        path_string = path.as_posix()
 
         # Get the track content
         content = self._db.get_content(FolderPath=path_string).first()
@@ -91,23 +90,43 @@ class RekordboxWrapper():
     ############
     # Tracks
     ############
+    def get_track_in_database(self, path: str) -> DjmdContent:
+        """Retrieve the first track in Database that match the path or `None`.
+        The path will be normalized to a POSIX-like representation to fit the Rekordbox Database.
+
+        Args:
+            path (str): The path to search for
+
+        Returns:
+            DjmdContent: The content for this path
+        """
+        path = Path(path)
+        path_string = path.as_posix()
+
+        content = self._db.get_content(FolderPath=path_string).first()
+        if not content:
+            logging.warning('Track path not found: %s', path)
+            return None
+
+        return content
+
     def add_track_to_database(self, path: str, title: str, artist: str, album: str, genre: str):
         logging.info('Adding track %s to database...', path)
 
         djm_artist = self.get_or_create_artist(artist)
         djm_album = self.get_or_create_album(album, djm_artist.ID)
-        djm_genre = self.get_or_create_genre(genre)
+        djm_genre = self.get_or_create_genre(genre) if genre else None
 
         try:
             content = self._db.add_content(
-                path,
+                path=path,
                 Title=title,
                 Artist=djm_artist,
                 Album=djm_album,
                 Genre=djm_genre
             )
         except ValueError:
-            logging.info('Track already exists in database')
+            logging.debug('Track %s already exists in database', path)
             return
 
         logging.info('Added new track to database: %s', path)
@@ -117,7 +136,7 @@ class RekordboxWrapper():
 
     def remove_track_from_database(self, path: str):
         path = Path(path)
-        path_string = str(path)
+        path_string = path.as_posix()
 
         content = self._db.get_content(FolderPath=path_string).first()
         if not content:
@@ -219,9 +238,9 @@ class RekordboxWrapper():
             if expand:
                 songs = playlist.Songs
                 for song in songs:
-                    content = song.Content
+                    content: DjmdContent = song.Content
                     logging.debug(
-                        '\t%s - %s', content.ArtistName, content.Title
+                        '\t%s - %s (%s)', content.ArtistName, content.Title, content.FolderPath
                     )
 
     def print_artists(self):
