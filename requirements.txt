@@ -1,0 +1,3 @@
+argparse
+pyrekordbox==0.4.4
+spotdl==4.4.3
