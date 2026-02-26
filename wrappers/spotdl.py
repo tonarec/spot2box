@@ -50,9 +50,17 @@ class SpotDLWrapper:
     # File
     ############
     def compute_filepath(self, track: Song) -> Path:
+        """Compute the correct filpath for the song according to the settings.
+
+        Args:
+            track (Song): A song object to use as reference
+
+        Returns:
+            Path: The corresponding path of the song
+        """
         filepath = formatter.create_file_name(
             track,
-            self.downloader.settings["output"],
+            self.downloader.settings["output"],  # TODO: add output folder
             self.downloader.settings["format"],
             self.downloader.settings["restrict"],
         )

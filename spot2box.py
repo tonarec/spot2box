@@ -1,15 +1,17 @@
 """Main module of SpotBox"""
 
 import argparse
-import logging
-import sys
-import os
 import json
+import logging
+import os
+import sys
+from pathlib import Path
 
+from models.spotdl_file import SpotDLFile
 from utils import logger
+from utils.spotify import remove_intl_from_url
 from wrappers.rekordbox import RekordboxWrapper
 from wrappers.spotdl import SpotDLWrapper
-from utils.spotify import remove_intl_from_url
 
 parser = argparse.ArgumentParser(
     prog='SpotBox - Spotify to Rekordbox playlist manager',
@@ -59,13 +61,12 @@ def main():
 
     for spotdl_file in args.spotdl_files:
         # Load the spotdl file
-        with open(spotdl_file, 'r', encoding='utf-8') as f:
-            file_data = json.load(f)
+        spotdl = SpotDLFile.from_filepath(spotdl_file)
 
         # Retrieve the song objects
-        songs = spot_wrapper.get_songs(spotdl_file)
+        songs = spotdl.songs
 
-        for query in file_data.get('query'):
+        for query in spotdl.query:
             url = remove_intl_from_url(query)
 
             if not ("open.spotify.com" in url and "playlist" in url):
@@ -80,11 +81,16 @@ def main():
             logging.info('    %s', description)
 
             # TODO: Compute safe playlist name
-            rb_playlist_name = 'TestPlaylist_SpotDL'
+            path = Path(spotdl_file)
+            spotdl_filename = path.stem
+            rb_playlist_name = spotdl_filename
 
             # Filtering songs for the current playlist
             playlist_songs = [song for song in songs if song.list_url == url]
             sorted_songs = spot_wrapper.sort_songs(playlist_songs)
+
+            # Add missing songs to database
+            track_paths = []
             for current_song in sorted_songs:
 
                 # Check for file downloaded and present in the rekordbox database
@@ -95,6 +101,8 @@ def main():
                     )
                     # TODO: Download missing track if enabled
                     continue
+
+                track_paths.append(filepath)
 
                 content = rb_wrapper.get_track_in_database(filepath)
                 if content is None:
@@ -107,8 +115,8 @@ def main():
                         genre=current_song.genres[0] if current_song.genres else None
                     )
 
-                # Add the tracks to the playlist
-                rb_wrapper.add_track_to_playlist(filepath, rb_playlist_name)
+            # Sync tracks to the playlist
+            rb_wrapper.sync_playlist(rb_playlist_name, track_paths)
 
     rb_wrapper.apply_changes()
 
