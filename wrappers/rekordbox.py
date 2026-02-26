@@ -1,4 +1,4 @@
-"""Module that hanlde a wrapper for Rekordbox"""
+"""Module that handle a wrapper for Rekordbox"""
 
 import logging
 import os

@@ -1,4 +1,4 @@
-"""Module that hanlde a wrapper for SpotDL"""
+"""Module that handle a wrapper for SpotDL"""
 
 import json
 import logging
