@@ -5,7 +5,11 @@ import logging
 from argparse import Namespace
 from pathlib import Path
 from typing import Any, Dict
+from copy import deepcopy
 
+import utils
+from spotdl.console.sync import sync
+from spotdl.console.save import save
 from spotdl.console.entry_point import generate_initial_config
 from spotdl.download.downloader import Downloader
 from spotdl.types.options import DownloaderOptions, SpotifyOptions
@@ -15,6 +19,8 @@ from spotdl.utils import ffmpeg, formatter
 from spotdl.utils.config import (DOWNLOADER_OPTIONS, SPOTIFY_OPTIONS,
                                  create_settings_type, get_config)
 from spotdl.utils.spotify import SpotifyClient
+
+from models.spotdl_file import SpotDLFile
 
 
 class SpotDLWrapper:
@@ -31,6 +37,10 @@ class SpotDLWrapper:
     def __init_config(self, args: Namespace) -> bool:
         generate_initial_config()
         self.config = get_config()
+
+        # Ensure correct parameters for spot2box
+        self.config['load_config'] = True
+        self.config['sync_without_deleting'] = True
 
         # Creating correct settings types
         spotify_config = create_settings_type(
@@ -65,6 +75,37 @@ class SpotDLWrapper:
             self.downloader.settings["restrict"],
         )
         return filepath
+
+    def process_spotdl_file(self, filepath: str) -> SpotDLFile:
+        # From a spotdl file process the normal sync mode
+        # Then load the spotdl file and return the corresponding
+        spotdl_file = SpotDLFile.from_filepath(filepath)
+        sync(spotdl_file.path, self.downloader)
+        spotdl_file.reload()
+        return spotdl_file
+
+    def process_spotify_url(self, url: str, filename: str = None) -> SpotDLFile:
+        # From a Spotify URL process the sync mode with save path enabled
+        # Then load the spotdl file and return the corresponding object
+        metadata = self.get_playlist_metadata(url)
+        if not filename:
+            name = metadata['name']
+            description = metadata['description']
+            filename = utils.compute_spotdl_filename(
+                playlist_name=name,
+                playlist_description=description
+            )
+            filename += '.spotdl'
+
+        # TODO: Compute fullpath for appdata
+        filepath = filename
+
+        # Copy needed to not overwrite settings
+        downloader = deepcopy(self.downloader)
+        downloader.settings["save_file"] = filename
+        save(query=url, downloader=downloader)
+        spotdl_file = SpotDLFile.from_filepath(filepath)
+        return spotdl_file
 
     ############
     # Songs

@@ -1,15 +1,14 @@
 """Main module of SpotBox"""
 
 import argparse
-import json
 import logging
 import os
 import sys
 from pathlib import Path
 
+import utils
 from models.spotdl_file import SpotDLFile
 from utils import logger
-from utils.spotify import remove_intl_from_url
 from wrappers.rekordbox import RekordboxWrapper
 from wrappers.spotdl import SpotDLWrapper
 
@@ -22,7 +21,9 @@ parser.add_argument('-xml', '--rekordbox-xml', type=str,
 parser.add_argument('-r', '--rekordbox-path', type=str,
                     dest='rekordbox_path', help='The Rekordbox installation path')
 parser.add_argument('-f', '--spotdl-file', type=str, dest='spotdl_files', action='append',
-                    help='SpotDL file to use as reference')
+                    help='SpotDL files to use as inputs')
+parser.add_argument('-u', '--url', type=str, dest='urls', action='append',
+                    help='Spotify playlist URLs to process')
 parser.add_argument('-client', '--spotify-client', type=str, dest='spotify_client',
                     help='The Spotify Client ID to use for the API')
 parser.add_argument('-secret', '--spotify-secret', type=str, dest='spotify_secret',
@@ -48,16 +49,17 @@ def main():
 
     # Check for valid spotdl files
     for spotdl_file in args.spotdl_files:
-        if not spotdl_file.endswith('.spotdl'):
-            logging.error('File %s is not a valid SpotDL file', spotdl_file)
+        if not utils.is_valid_spotdl_file(spotdl_file):
+            logging.error('File "%s" is not a valid SpotDL file', spotdl_file)
+            sys.exit(0)
+
+    for url in args.urls:
+        if not utils.is_valid_spotdl_file(url):
+            logging.error('Invalid Spotify playlist URL "%s"', url)
             sys.exit(0)
 
     rb_wrapper = RekordboxWrapper(xml)
     spot_wrapper = SpotDLWrapper(args)
-
-    # rb_wrapper.print_playlists(expand=True)
-    # rb_wrapper.print_artists()
-    # rb_wrapper.print_albums()
 
     for spotdl_file in args.spotdl_files:
         # Load the spotdl file
@@ -67,11 +69,10 @@ def main():
         songs = spotdl.songs
 
         for query in spotdl.query:
-            url = remove_intl_from_url(query)
-
-            if not ("open.spotify.com" in url and "playlist" in url):
+            url = utils.remove_intl_from_url(query)
+            if not utils.is_valid_spotify_url(url):
                 logging.warning(
-                    'Ignoring non valid playlist query in spotdl file: %s', url)
+                    'Ignoring non valid Spotify playlist query in spotdl file: %s', url)
                 continue
 
             metadata = spot_wrapper.get_playlist_metadata(url)
