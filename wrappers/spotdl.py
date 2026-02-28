@@ -2,15 +2,13 @@
 
 import json
 import logging
-from argparse import Namespace
+from copy import deepcopy
 from pathlib import Path
 from typing import Any, Dict
-from copy import deepcopy
 
-import utils
-from spotdl.console.sync import sync
-from spotdl.console.save import save
 from spotdl.console.entry_point import generate_initial_config
+from spotdl.console.save import save
+from spotdl.console.sync import sync
 from spotdl.download.downloader import Downloader
 from spotdl.types.options import DownloaderOptions, SpotifyOptions
 from spotdl.types.playlist import Playlist
@@ -20,34 +18,40 @@ from spotdl.utils.config import (DOWNLOADER_OPTIONS, SPOTIFY_OPTIONS,
                                  create_settings_type, get_config)
 from spotdl.utils.spotify import SpotifyClient
 
+import utils
+from core.config import Spot2BoxConfig, get_sync_folder_path
 from models.spotdl_file import SpotDLFile
 
 
 class SpotDLWrapper:
 
-    def __init__(self, args: Namespace):
+    config: Spot2BoxConfig
+
+    def __init__(self, config: Spot2BoxConfig):
+        self.config = config
         self.__check_ffmpeg_install()
-        self.__init_config(args)
+        self.__init_spotdl_config()
 
     def __check_ffmpeg_install(self):
         if ffmpeg.is_ffmpeg_installed() is False:
             logging.info("FFmpeg is not installed. Downloading FFmpeg...")
             ffmpeg.download_ffmpeg()
 
-    def __init_config(self, args: Namespace) -> bool:
+    def __init_spotdl_config(self) -> bool:
         generate_initial_config()
-        self.config = get_config()
+        spotdl_config = get_config()
 
         # Ensure correct parameters for spot2box
-        self.config['load_config'] = True
-        self.config['sync_without_deleting'] = True
+        spotdl_config['load_config'] = True
+        spotdl_config['sync_without_deleting'] = True
+        args = self.config.to_namespace()
 
         # Creating correct settings types
         spotify_config = create_settings_type(
-            args, self.config, SPOTIFY_OPTIONS
+            args, spotdl_config, SPOTIFY_OPTIONS
         )
         downloader_settings = create_settings_type(
-            args, self.config, DOWNLOADER_OPTIONS
+            args, spotdl_config, DOWNLOADER_OPTIONS
         )
 
         spotify_options = SpotifyOptions(**spotify_config)
@@ -70,7 +74,7 @@ class SpotDLWrapper:
         """
         filepath = formatter.create_file_name(
             track,
-            self.downloader.settings["output"],  # TODO: add output folder
+            self.config.output,
             self.downloader.settings["format"],
             self.downloader.settings["restrict"],
         )
@@ -97,8 +101,7 @@ class SpotDLWrapper:
             )
             filename += '.spotdl'
 
-        # TODO: Compute fullpath for appdata
-        filepath = filename
+        filepath = get_sync_folder_path().joinpath(filename)
 
         # Copy needed to not overwrite settings
         downloader = deepcopy(self.downloader)
@@ -155,12 +158,3 @@ class SpotDLWrapper:
         """
         default = DOWNLOADER_OPTIONS.get('id3_separator')
         return self.downloader.settings.get('id3_separator', default)
-
-    def print_songs(self):
-        playlists = self.db.get_playlist()
-        for playlist in playlists:
-            logging.debug('Playlist: %s', playlist.Name)
-            songs = playlist.Songs
-            for song in songs:
-                content = song.Content
-                logging.debug('\t%s - %s', content.ArtistName, content.Title)

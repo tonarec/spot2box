@@ -12,22 +12,28 @@ from pyrekordbox import MasterDatabase, RekordboxXml, config
 from pyrekordbox.masterdb import (DjmdAlbum, DjmdArtist, DjmdContent,
                                   DjmdGenre, DjmdPlaylist, DjmdSongPlaylist)
 
+from core.config import Spot2BoxConfig
+
 PathLike = Union[Path, str]
 PlaylistLike = Union[DjmdPlaylist, str]
 ContentLike = Union[DjmdContent, PathLike]
 
 
 class RekordboxWrapper():
-    def __init__(self, xml_path: str = None):
+    def __init__(self, config: Spot2BoxConfig):
         logging.debug('Current loaded configuration')
         for line in config.pformat_config().split('\n'):
             logging.debug(line)
 
+        xml_path = config.rekordbox_xml
+        force_kill = config.force_kill
+
         self._db = MasterDatabase()
         self._xml = RekordboxXml(xml_path) if xml_path else None
-        self.__detect_rekordbox()
+        self.__detect_rekordbox(force_kill)
 
     def propagate_xml_to_database(self):
+        # TODO: Check if database is loaded instead
         if self._xml is None and self._db is None:
             logging.warning('No XML configuration will be propagated')
 

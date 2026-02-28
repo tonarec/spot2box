@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 import utils
+from core.config import get_config
 from models.spotdl_file import SpotDLFile
 from utils import logger
 from wrappers.rekordbox import RekordboxWrapper
@@ -17,19 +18,22 @@ parser = argparse.ArgumentParser(
     description='Manage your Rekordbox playlists directly from Spotify')
 
 parser.add_argument('-xml', '--rekordbox-xml', type=str,
-                    dest='rekordbox_xml', help='The rekordbox.xml to update')
+                    dest='rekordbox_xml', help='The rekordbox.xml to update.')
 parser.add_argument('-r', '--rekordbox-path', type=str,
-                    dest='rekordbox_path', help='The Rekordbox installation path')
+                    dest='rekordbox_path', help='The Rekordbox installation path.')
 parser.add_argument('-f', '--spotdl-file', type=str, dest='spotdl_files', action='append',
-                    help='SpotDL files to use as inputs')
+                    help='SpotDL files to use as inputs.')
 parser.add_argument('-u', '--url', type=str, dest='urls', action='append',
-                    help='Spotify playlist URLs to process')
+                    help='Spotify Playlist URLs to process.')
 parser.add_argument('-client', '--spotify-client', type=str, dest='spotify_client',
-                    help='The Spotify Client ID to use for the API')
+                    help='The Spotify Client ID to use for the API.')
 parser.add_argument('-secret', '--spotify-secret', type=str, dest='spotify_secret',
-                    help='The Spotify Secret to use for the API')
+                    help='The Spotify Secret to use for the API.')
 parser.add_argument('-output', '--output', type=str, dest='output',
-                    help='The folder of tracks')
+                    help='The folder of tracks.')
+parser.add_argument('--save', dest='save_config', action='store_true',
+                    help='Save configuration into appdata.')
+
 
 logger.init_logger(level=logging.DEBUG)
 
@@ -37,31 +41,24 @@ logger.init_logger(level=logging.DEBUG)
 def main():
     """Main function of SpotBox"""
     args = parser.parse_args()
-
-    # Check arguments for rekordbox
-    path = args.rekordbox_path
-    xml = args.rekordbox_xml
-    # if xml is None and path is None:
-    #     logging.error(
-    #         'Set the Rekordbox installation path and/or a rekordbox.xml file'
-    #     )
-    #     sys.exit(0)
+    config = get_config()
+    config.override(args)
 
     # Check for valid spotdl files
-    for spotdl_file in args.spotdl_files:
+    for spotdl_file in config.spotdl_files:
         if not utils.is_valid_spotdl_file(spotdl_file):
             logging.error('File "%s" is not a valid SpotDL file', spotdl_file)
             sys.exit(0)
 
-    for url in args.urls:
+    for url in config.urls:
         if not utils.is_valid_spotdl_file(url):
             logging.error('Invalid Spotify playlist URL "%s"', url)
             sys.exit(0)
 
-    rb_wrapper = RekordboxWrapper(xml)
-    spot_wrapper = SpotDLWrapper(args)
+    rb_wrapper = RekordboxWrapper(config)
+    spot_wrapper = SpotDLWrapper(config)
 
-    for spotdl_file in args.spotdl_files:
+    for spotdl_file in config.spotdl_files:
         # Load the spotdl file
         spotdl = SpotDLFile.from_filepath(spotdl_file)
 
@@ -120,6 +117,9 @@ def main():
             rb_wrapper.sync_playlist(rb_playlist_name, track_paths)
 
     rb_wrapper.apply_changes()
+
+    if args.save_config:
+        config.save()
 
 
 if __name__ == '__main__':

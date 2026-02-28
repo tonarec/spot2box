@@ -3,6 +3,7 @@ SpotDLFile module for handling spotdl file data.
 """
 
 import json
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Union
 
@@ -16,7 +17,7 @@ class SpotDLFileError(Exception):
     Base class for all exceptions related to spotdl files.
     """
 
-
+@dataclass
 class SpotDLFile():
     """
     SpotDLFile class. Contains all the informations about a spotdl file.
@@ -36,12 +37,12 @@ class SpotDLFile():
         return spotdl
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any], path: PathLike = None) -> "SpotDLFile":
+    def from_dict(cls, data: Dict[str, Any], filepath: PathLike = None) -> "SpotDLFile":
         spotdl = cls(
             type=data['type'],
             query=data['query'],
             songs=[Song.from_dict(song) for song in data['songs']],
-            path=Path(path)
+            path=Path(filepath)
         )
         return spotdl
 
