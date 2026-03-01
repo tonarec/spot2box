@@ -8,7 +8,8 @@ from pathlib import Path
 from typing import Union
 
 import psutil
-from pyrekordbox import MasterDatabase, RekordboxXml, config
+from pyrekordbox.config import pformat_config
+from pyrekordbox import MasterDatabase, RekordboxXml
 from pyrekordbox.masterdb import (DjmdAlbum, DjmdArtist, DjmdContent,
                                   DjmdGenre, DjmdPlaylist, DjmdSongPlaylist)
 
@@ -22,7 +23,7 @@ ContentLike = Union[DjmdContent, PathLike]
 class RekordboxWrapper():
     def __init__(self, config: Spot2BoxConfig):
         logging.debug('Current loaded configuration')
-        for line in config.pformat_config().split('\n'):
+        for line in pformat_config().split('\n'):
             logging.debug(line)
 
         xml_path = config.rekordbox_xml

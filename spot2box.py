@@ -51,12 +51,15 @@ def main():
             sys.exit(0)
 
     for url in config.urls:
-        if not utils.is_valid_spotdl_file(url):
+        if not utils.is_valid_spotify_url(url):
             logging.error('Invalid Spotify playlist URL "%s"', url)
             sys.exit(0)
 
     rb_wrapper = RekordboxWrapper(config)
     spot_wrapper = SpotDLWrapper(config)
+
+    for url in config.urls:
+        spot_wrapper.process_spotify_url(url)
 
     for spotdl_file in config.spotdl_files:
         # Load the spotdl file

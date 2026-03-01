@@ -1,5 +1,6 @@
 """Module for Spot2Box configuration"""
 import json
+import os
 from argparse import Namespace
 from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
@@ -34,7 +35,9 @@ def get_sync_folder_path() -> Path:
     Returns:
         Path: The path of the sync folder
     """
-    return get_appdata_path().joinpath(SYNC_FOLDER_NAME)
+    sync_folder = get_appdata_path().joinpath(SYNC_FOLDER_NAME)
+    os.makedirs(sync_folder, exist_ok=True)
+    return sync_folder
 
 
 def get_config_filepath() -> Path:
@@ -46,7 +49,7 @@ def get_config_filepath() -> Path:
     return get_appdata_path().joinpath(CONFIG_FILENAME)
 
 
-def get_logs_filepath() -> Path:
+def get_log_filepath() -> Path:
     """Get the log file path.
 
     Returns:

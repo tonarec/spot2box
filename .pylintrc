@@ -1,0 +1,6 @@
+[MASTER]
+disable=
+    R0902
+
+[FORMAT]
+max-line-length=100

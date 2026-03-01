@@ -84,15 +84,22 @@ class SpotDLWrapper:
         # From a spotdl file process the normal sync mode
         # Then load the spotdl file and return the corresponding
         spotdl_file = SpotDLFile.from_filepath(filepath)
-        sync(spotdl_file.path, self.downloader)
+        sync(query=spotdl_file.query, downloader=self.downloader)
         spotdl_file.reload()
         return spotdl_file
 
     def process_spotify_url(self, url: str, filename: str = None) -> SpotDLFile:
         # From a Spotify URL process the sync mode with save path enabled
         # Then load the spotdl file and return the corresponding object
-        metadata = self.get_playlist_metadata(url)
+
+        # Check for corresponding spotdl file
+        spotdl_file = utils.search_first_spotdl_file(url)
+        if spotdl_file:
+            return self.process_spotdl_file(filepath=spotdl_file)
+
+        # Otherwise process a new URL
         if not filename:
+            metadata = self.get_playlist_metadata(url)
             name = metadata['name']
             description = metadata['description']
             filename = utils.compute_spotdl_filename(
