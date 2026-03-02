@@ -84,6 +84,7 @@ class Spot2BoxConfig():
     output: str = None
     urls: list[str] = field(default_factory=list)
     spotdl_files: list[str] = field(default_factory=list)
+    save_sync_file: bool = True
 
     # Spotify
     spotify_client: str = None

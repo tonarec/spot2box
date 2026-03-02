@@ -2,8 +2,9 @@
 import json
 import os
 import re
-from pathlib import Path
+import uuid
 from json import JSONDecodeError
+from pathlib import Path
 
 from core import config
 
@@ -37,17 +38,24 @@ def remove_params_from_url(url: str) -> str:
     return splits[0]
 
 
-def compute_spotdl_filename(playlist_name: str, playlist_description: str, remove_tags=True) -> str:
-    """Compute the SpotDL file according to the playlist metadata.
+def compute_spotdl_filename(url: str) -> str:
+    """Compute the SpotDL file according to the playlist URL. If the URL is invalid,
+    a random generated UUID is used for the base name. 
 
     Args:
-        playlist_name (_type_): The Spotify playlist name
-        playlist_description (_type_): The Spotify playlist description
-        remove_tags (bool, optional): If tags markers `[]` should be removed
-            from the playlist name. Defaults to True.
+        url (_type_): The Spotify playlist URL
     """
-    desc_math = PLAYLIST_DESC_PATTERN.match(playlist_description)
-    return ''
+
+    if is_valid_spotify_url(url):
+        # Extracting playlist ID
+        parts = url.split('/playlist/')
+        tail = parts[-1]
+        base = tail.split('?')[0]
+    else:
+        # Generate random UUID and get node part
+        base = uuid.uuid4().node
+
+    return base + '.spotdl'
 
 
 def is_valid_spotify_url(url: str) -> bool:
