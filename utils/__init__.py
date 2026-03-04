@@ -7,6 +7,7 @@ from json import JSONDecodeError
 from pathlib import Path
 
 from core import config
+from models.spotdl_file import SpotDLFile
 
 PLAYLIST_DESC_PATTERN = re.compile(r"playlist:\"*(.*)\"*")
 GENRE_DESC_PATTERN = re.compile(r"genre:\"*(.*)\"*")
@@ -99,7 +100,7 @@ def is_valid_spotdl_file(filepath: str) -> bool:
     return True
 
 
-def search_first_spotdl_file(url: str, ignore_params: bool = True) -> str:
+def search_first_spotdl_file(url: str, ignore_params: bool = True) -> SpotDLFile:
     """Search for the first SpotDL file that match the URL in the sync folder.
 
     Args:
@@ -114,7 +115,7 @@ def search_first_spotdl_file(url: str, ignore_params: bool = True) -> str:
     spotdl_files = search_spotdl_files(folder_path=sync_path)
     for spotdl_file in spotdl_files:
         if is_actual_sync_file(url, spotdl_file, ignore_params):
-            return spotdl_file
+            return SpotDLFile.from_dict(spotdl_file)
     return None
 
 

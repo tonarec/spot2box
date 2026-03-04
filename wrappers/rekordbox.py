@@ -39,11 +39,10 @@ class RekordboxWrapper():
             logging.warning('No XML configuration will be propagated')
 
     def apply_changes(self):
+        """Apply all pending changes to the database."""
+
         self._db.commit()
 
-    ############
-    # Playlist
-    ############
     def sync_playlist(self, playlist: PlaylistLike, tracks: list[PathLike]):
         """Synchronize the playlist with a list of tracks.
 
@@ -166,9 +165,6 @@ class RekordboxWrapper():
         # Finally remove the track from playlist
         self._db.remove_from_playlist(plist, song_playlist)
 
-    ############
-    # Tracks
-    ############
     def get_track_in_database(self, path: PathLike) -> DjmdContent:
         """Retrieve the first track in Database that match the path or `None`.
         The path will be normalized to a POSIX-like representation to fit the Rekordbox Database.
@@ -220,9 +216,6 @@ class RekordboxWrapper():
         self._db.delete(content)
         logging.info('Track removed from database: %s', content.FolderPath)
 
-    ############
-    # Content
-    ############
     def __get_actual_playlist(self, playlist: PlaylistLike) -> DjmdPlaylist:
         if isinstance(playlist, str):
             playlist = self._db.get_playlist(Name=playlist).first()
@@ -278,9 +271,6 @@ class RekordboxWrapper():
         logging.debug('Created genre %s (%s) in database', name, genre.ID)
         return genre
 
-    ############
-    # Utils
-    ############
     def __get_pids(self) -> list[int]:
         """Get a list of running pids"""
         pids = []

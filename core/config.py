@@ -93,8 +93,10 @@ class Spot2BoxConfig():
     # Rekordbox
     rekordbox_xml: str = None
     rekordbox_path: str = None
+    add_only: bool = False
     delete_last_track: bool = False
     force_kill: bool = False
+    open_rekordbox: bool = True
 
     @classmethod
     def from_namespace(cls, args: Namespace) -> "Spot2BoxConfig":

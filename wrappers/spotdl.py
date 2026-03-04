@@ -3,7 +3,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Union
 
 from spotdl.console.download import download
 from spotdl.console.entry_point import generate_initial_config
@@ -20,6 +20,8 @@ from spotdl.utils.spotify import SpotifyClient
 import utils
 from core.config import Spot2BoxConfig, get_sync_folder_path
 from models.spotdl_file import SpotDLFile
+
+SpotDLOrPath = Union[SpotDLFile, str]
 
 
 class SpotDLWrapper:
@@ -78,7 +80,7 @@ class SpotDLWrapper:
         )
         return filepath
 
-    def process_spotdl_file(self, filepath: str) -> SpotDLFile:
+    def process_spotdl_file(self, file: SpotDLOrPath) -> SpotDLFile:
         """Process a spotdl file in sync mode. Then load the spotdl file and return
         the corresponding SpotDLFile object.
 
@@ -89,7 +91,11 @@ class SpotDLWrapper:
             SpotDLFile: An instance corresponding to the spotdl file
         """
 
-        spotdl_file = SpotDLFile.from_filepath(filepath)
+        if isinstance(file, str):
+            spotdl_file = SpotDLFile.from_filepath(file)
+        else:
+            spotdl_file = file
+
         sync(query=spotdl_file.query, downloader=self.downloader)
         spotdl_file.reload()
         return spotdl_file
@@ -114,7 +120,8 @@ class SpotDLWrapper:
         # Check for corresponding spotdl file
         spotdl_file = utils.search_first_spotdl_file(url)
         if spotdl_file:
-            return self.process_spotdl_file(filepath=spotdl_file)
+            spotdl_file.update_query(url)
+            return self.process_spotdl_file(file=spotdl_file)
 
         # Process URL directly
         if not self.config.save_sync_file:
