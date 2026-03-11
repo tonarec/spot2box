@@ -6,8 +6,10 @@ import uuid
 from json import JSONDecodeError
 from pathlib import Path
 
-from core import config
-from models.spotdl_file import SpotDLFile
+from spotdl.types.song import Song
+
+from spot2box.core import config
+from spot2box.models.spotdl_file import SpotDLFile
 
 PLAYLIST_DESC_PATTERN = re.compile(r"playlist:\"*(.*)\"*")
 GENRE_DESC_PATTERN = re.compile(r"genre:\"*(.*)\"*")
@@ -115,7 +117,7 @@ def search_first_spotdl_file(url: str, ignore_params: bool = True) -> SpotDLFile
     spotdl_files = search_spotdl_files(folder_path=sync_path)
     for spotdl_file in spotdl_files:
         if is_actual_sync_file(url, spotdl_file, ignore_params):
-            return SpotDLFile.from_dict(spotdl_file)
+            return SpotDLFile.from_filepath(spotdl_file)
     return None
 
 
@@ -161,3 +163,17 @@ def is_actual_sync_file(url: str, spotdl_file: str, ignore_params: bool = True) 
                     return True
 
     return False
+
+
+def sort_songs(songs: list[Song]) -> list[Song]:
+    sorted_songs = list.copy(songs)
+    sorted_songs.sort(key=lambda x: x.list_position or 0)
+    return sorted_songs
+
+
+def get_playlist_songs(url: str, spotdl_file: SpotDLFile, sort: bool = True) -> list[Song]:
+    songs = spotdl_file.songs
+    playlist_songs = [song for song in songs if song.list_url == url]
+    if sort:
+        playlist_songs = sort_songs(playlist_songs)
+    return playlist_songs

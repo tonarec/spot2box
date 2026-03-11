@@ -87,7 +87,7 @@ class SpotDLFile():
             self.query = [url]
         elif self.query[0] != url:
             self.query[0] = url
-
+    
     def reload(self):
         """Reloads the SpotDLFile fields.
 

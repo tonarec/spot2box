@@ -2,8 +2,8 @@
 import logging
 import sys
 
-from core import config
-from utils import info
+from spot2box.core import config
+from spot2box.utils import info
 
 
 def init_logger(level: int = logging.INFO):

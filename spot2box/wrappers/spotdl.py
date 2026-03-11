@@ -1,6 +1,5 @@
 """Module that handle a wrapper for SpotDL"""
 
-import json
 import logging
 from pathlib import Path
 from typing import Any, Dict, Union
@@ -17,9 +16,9 @@ from spotdl.utils.config import (DOWNLOADER_OPTIONS, SPOTIFY_OPTIONS,
                                  create_settings_type, get_config)
 from spotdl.utils.spotify import SpotifyClient
 
-import utils
-from core.config import Spot2BoxConfig, get_sync_folder_path
-from models.spotdl_file import SpotDLFile
+from spot2box import utils
+from spot2box.core.config import Spot2BoxConfig, get_sync_folder_path
+from spot2box.models.spotdl_file import SpotDLFile
 
 SpotDLOrPath = Union[SpotDLFile, str]
 
@@ -96,7 +95,7 @@ class SpotDLWrapper:
         else:
             spotdl_file = file
 
-        sync(query=spotdl_file.query, downloader=self.downloader)
+        sync(query=[spotdl_file.path.as_posix()], downloader=self.downloader)
         spotdl_file.reload()
         return spotdl_file
 
@@ -141,6 +140,7 @@ class SpotDLWrapper:
         spotdl_file = SpotDLFile.from_filepath(filepath)
         return spotdl_file
 
+    @classmethod
     def sort_songs(self, songs: list[Song]) -> list[Song]:
         sorted_songs = list.copy(songs)
         sorted_songs.sort(key=lambda x: x.list_position or 0)

@@ -8,12 +8,12 @@ from pathlib import Path
 from typing import Union
 
 import psutil
-from pyrekordbox.config import pformat_config
 from pyrekordbox import MasterDatabase, RekordboxXml
+from pyrekordbox.config import pformat_config
 from pyrekordbox.masterdb import (DjmdAlbum, DjmdArtist, DjmdContent,
                                   DjmdGenre, DjmdPlaylist, DjmdSongPlaylist)
 
-from core.config import Spot2BoxConfig
+from spot2box.core.config import Spot2BoxConfig
 
 PathLike = Union[Path, str]
 PlaylistLike = Union[DjmdPlaylist, str]
@@ -31,7 +31,7 @@ class RekordboxWrapper():
 
         self._db = MasterDatabase()
         self._xml = RekordboxXml(xml_path) if xml_path else None
-        self.__detect_rekordbox(force_kill)
+        self._detect_rekordbox(force_kill)
 
     def propagate_xml_to_database(self):
         # TODO: Check if database is loaded instead
@@ -79,8 +79,10 @@ class RekordboxWrapper():
                 contents_to_add.append(track_path)
 
         # Proceed playlist update
+        # TODO: Only add new tracks if add-only is enabled
         for content in contents_to_remove:
             self.remove_track_from_playlist(track=content, playlist=playlist)
+            # TODO: Check for multiple occurences to delete if set
         for content in contents_to_add:
             self.add_track_to_playlist(path=content, playlist_name=playlist)
 
@@ -91,6 +93,7 @@ class RekordboxWrapper():
             return
 
         # Sort playlist according to the list order
+        # TODO: Sort the tracks in the Rekordbox playlist if set
         for index, track_path in enumerate(track_paths):
             # Get the track in the playlist
             current_content: DjmdContent = self._db.get_content(
@@ -140,13 +143,13 @@ class RekordboxWrapper():
     def remove_track_from_playlist(self, track: ContentLike, playlist: PlaylistLike):
 
         # Get the track content
-        content = self.__get_actual_content(track)
+        content = self._get_actual_content(track)
         if not content:
             logging.warning('Track path not found: %s', track)
             return
 
         # Get the playlist
-        plist = self.__get_actual_playlist(playlist)
+        plist = self._get_actual_playlist(playlist)
         if not plist:
             logging.warning('Playlist not found: %s', playlist)
             return
@@ -175,7 +178,7 @@ class RekordboxWrapper():
         Returns:
             DjmdContent: The content for this path
         """
-        content = self.__get_actual_content(path)
+        content = self._get_actual_content(path)
         if not content:
             logging.warning('Track path not found: %s', path)
             return None
@@ -208,7 +211,7 @@ class RekordboxWrapper():
         logging.debug('  Genre: %s', content.Genre)
 
     def remove_track_from_database(self, track: ContentLike):
-        content = self.__get_actual_content(track)
+        content = self._get_actual_content(track)
         if not content:
             logging.warning('File to remove not found: %s', track)
             return
@@ -216,19 +219,19 @@ class RekordboxWrapper():
         self._db.delete(content)
         logging.info('Track removed from database: %s', content.FolderPath)
 
-    def __get_actual_playlist(self, playlist: PlaylistLike) -> DjmdPlaylist:
+    def _get_actual_playlist(self, playlist: PlaylistLike) -> DjmdPlaylist:
         if isinstance(playlist, str):
             playlist = self._db.get_playlist(Name=playlist).first()
         return playlist
 
-    def __get_actual_content(self, content: ContentLike) -> DjmdContent:
+    def _get_actual_content(self, content: ContentLike) -> DjmdContent:
         if isinstance(content, PathLike):
             path = Path(content).as_posix()
             content = self._db.get_content(FolderPath=path).first()
         return content
 
     def get_or_create_playlist(self, name: str) -> DjmdPlaylist:
-        playlist = self.__get_actual_playlist(name)
+        playlist = self._get_actual_playlist(name)
         if playlist:
             logging.debug(
                 'Found playlist %s (%s) in database', name, playlist.ID
@@ -271,7 +274,7 @@ class RekordboxWrapper():
         logging.debug('Created genre %s (%s) in database', name, genre.ID)
         return genre
 
-    def __get_pids(self) -> list[int]:
+    def _get_pids(self) -> list[int]:
         """Get a list of running pids"""
         pids = []
         for proc in psutil.process_iter():
@@ -284,9 +287,9 @@ class RekordboxWrapper():
                 pass
         return pids
 
-    def __detect_rekordbox(self, force_kill=False):
+    def _detect_rekordbox(self, force_kill=False):
         """Detect Rekordbox process if exists and block the application until closed."""
-        pids = self.__get_pids()
+        pids = self._get_pids()
         if not pids:
             return
 
@@ -300,7 +303,7 @@ class RekordboxWrapper():
 
         logging.info('Waiting for Rekordbox to be closed...')
         while True:
-            pids = self.__get_pids()
+            pids = self._get_pids()
             if not pids:
                 logging.info('All Rekordbox processes closed.')
                 return
