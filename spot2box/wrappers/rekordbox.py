@@ -29,6 +29,7 @@ class RekordboxWrapper():
         xml_path = config.rekordbox_xml
         force_kill = config.force_kill
 
+        self._config = config
         self._db = MasterDatabase()
         self._xml = RekordboxXml(xml_path) if xml_path else None
         self._detect_rekordbox(force_kill)
@@ -63,14 +64,14 @@ class RekordboxWrapper():
 
         logging.info('Syncing playlist "%s" into Rekordbox...', playlist.Name)
 
-        # TODO: Should we manupulates path or IDs?
         track_paths = [Path(track).as_posix() for track in tracks]
 
         # Remove tracks not present in list
         contents_to_remove = []
-        for content in playlist_content:
-            if not content.FolderPath in track_paths:
-                contents_to_remove.append(content)
+        if not self._config.add_only:
+            for content in playlist_content:
+                if not content.FolderPath in track_paths:
+                    contents_to_remove.append(content)
 
         # Add new tracks to playlist
         contents_to_add = []
@@ -79,10 +80,15 @@ class RekordboxWrapper():
                 contents_to_add.append(track_path)
 
         # Proceed playlist update
-        # TODO: Only add new tracks if add-only is enabled
         for content in contents_to_remove:
             self.remove_track_from_playlist(track=content, playlist=playlist)
-            # TODO: Check for multiple occurences to delete if set
+
+            # Remove the track if no longer in playlists
+            if self._config.delete_standalone_track:
+                related_playlists = self.get_track_related_playlists(content)
+                if len(related_playlists) == 0:
+                    self.remove_track_from_database(content)
+
         for content in contents_to_add:
             self.add_track_to_playlist(path=content, playlist_name=playlist)
 
@@ -93,24 +99,24 @@ class RekordboxWrapper():
             return
 
         # Sort playlist according to the list order
-        # TODO: Sort the tracks in the Rekordbox playlist if set
-        for index, track_path in enumerate(track_paths):
-            # Get the track in the playlist
-            current_content: DjmdContent = self._db.get_content(
-                FolderPath=track_path).one()
-            current_psong: DjmdSongPlaylist = self._db.get_playlist_songs(
-                PlaylistID=playlist.ID,
-                ContentID=current_content.ID).one()
+        if self._config.sort_playlist:
+            for index, track_path in enumerate(track_paths):
+                # Get the track in the playlist
+                current_content: DjmdContent = self._db.get_content(
+                    FolderPath=track_path).one()
+                current_psong: DjmdSongPlaylist = self._db.get_playlist_songs(
+                    PlaylistID=playlist.ID,
+                    ContentID=current_content.ID).one()
 
-            # Check the track position
-            trackpos = index + 1
-            if current_psong.TrackNo != trackpos:
-                # Move the track if the current index didn't match
-                self._db.move_song_in_playlist(
-                    playlist=playlist,
-                    song=current_psong,
-                    new_track_no=trackpos
-                )
+                # Check the track position
+                trackpos = index + 1
+                if current_psong.TrackNo != trackpos:
+                    # Move the track if the current index didn't match
+                    self._db.move_song_in_playlist(
+                        playlist=playlist,
+                        song=current_psong,
+                        new_track_no=trackpos
+                    )
 
         self.apply_changes()
         logging.info('Playlist "%s" synced!', playlist.Name)
@@ -119,6 +125,13 @@ class RekordboxWrapper():
                       len(contents_to_remove))
 
     def add_track_to_playlist(self, path: str, playlist_name: str, pos: int = None):
+        """Add a track to a playlist. The playlist will be created if does not exists in database.
+
+        Args:
+            path (str): _description_
+            playlist_name (str): _description_
+            pos (int, optional): _description_. Defaults to None.
+        """
 
         # Get the track content
         content = self.get_track_in_database(path)
@@ -141,6 +154,12 @@ class RekordboxWrapper():
         self._db.add_to_playlist(playlist, content, pos)
 
     def remove_track_from_playlist(self, track: ContentLike, playlist: PlaylistLike):
+        """This method removes all the occurences of the track in the playlist.
+
+        Args:
+            track (ContentLike): The `DjmContent` or a filepath to the track
+            playlist (PlaylistLike): The `DjmPlaylist` or the playlist name
+        """
 
         # Get the track content
         content = self._get_actual_content(track)
@@ -155,18 +174,41 @@ class RekordboxWrapper():
             return
 
         # Check if the track is in the playlist
-        song_playlist = self._db.get_playlist_songs(
-            PlaylistID=playlist.ID,
+        result = self._db.get_playlist_songs(
+            PlaylistID=plist.ID,
             ContentID=content.ID
-        ).first()
-        if not song_playlist:
+        )
+
+        # Finally remove the track from playlist
+        playlist_songs = result.all()
+        if len(playlist_songs) == 0:
             logging.warning(
                 'Track %s is not in playlist %s', content.FolderPath, playlist.Name
             )
             return
 
-        # Finally remove the track from playlist
-        self._db.remove_from_playlist(plist, song_playlist)
+        for psong in playlist_songs:
+            self._db.remove_from_playlist(plist, psong)
+
+    def get_track_related_playlists(self, track: ContentLike) -> list[DjmdPlaylist]:
+
+        playlists: set[DjmdPlaylist] = set()
+
+        # Get the track content
+        content = self._get_actual_content(track)
+        if not content:
+            logging.warning('Track path not found: %s', track)
+            return
+
+        # Check if the track is in the playlist
+        result = self._db.get_playlist_songs(
+            ContentID=content.ID
+        )
+
+        # Get playlist for each song playlist
+        for psong in result.all():
+            playlists.add(psong.Playlist)
+        return playlists
 
     def get_track_in_database(self, path: PathLike) -> DjmdContent:
         """Retrieve the first track in Database that match the path or `None`.
