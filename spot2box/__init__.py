@@ -35,13 +35,12 @@ class Spot2Box():
         # Once we have the SpotDLFile instance, get the target playlist name and object
         playlist_url = spotdl_file.query[0]
         metadata = self.spot_wrapper.get_playlist_metadata(url=playlist_url)
-        name = metadata.get('name')
-        description = metadata.get('description')
-        logging.info('Processing playlist %s', name)
-        logging.info('    %s', description)
+        playlist_name = metadata.get('name')
+        playlist_description = metadata.get('description')
+        logging.info('Processing playlist %s', playlist_name)
+        logging.info('    %s', playlist_description)
 
-        # TODO: Compute playlist name
-        rb_playlist_name = 'Spot2Box'
+        rb_playlist_name = utils.compute_safe_playlist_name(metadata)
 
         # Filtering songs for the current playlist
         songs = utils.get_playlist_songs(playlist_url, spotdl_file)

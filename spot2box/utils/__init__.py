@@ -2,7 +2,9 @@
 import json
 import os
 import re
+import unicodedata
 import uuid
+from html import unescape
 from json import JSONDecodeError
 from pathlib import Path
 
@@ -11,8 +13,8 @@ from spotdl.types.song import Song
 from spot2box.core import config
 from spot2box.models.spotdl_file import SpotDLFile
 
-PLAYLIST_DESC_PATTERN = re.compile(r"playlist:\"*(.*)\"*")
-GENRE_DESC_PATTERN = re.compile(r"genre:\"*(.*)\"*")
+PLAYLIST_DESC_PATTERN = re.compile(r'playlist:\"(.*)\"')
+GENRE_DESC_PATTERN = re.compile(r'genre:\"(.*)\*')
 
 
 def remove_intl_from_url(url: str) -> str:
@@ -59,6 +61,45 @@ def compute_spotdl_filename(url: str) -> str:
         base = uuid.uuid4().node
 
     return base + '.spotdl'
+
+
+def compute_safe_playlist_name(metadata: dict) -> str:
+    """Compute the safe playlist name from the metadata."""
+
+    result = None
+
+    name = metadata.get('name')
+    description = metadata.get('description')
+
+    if description:
+        description = unescape(description)
+        d = sanitize_text(description)
+        playlist_match = PLAYLIST_DESC_PATTERN.match(d)
+        if playlist_match:
+            result = playlist_match.group(1)
+            result = result.strip()
+
+    if not result:
+        result = sanitize_text(name)
+
+    return result
+
+
+def sanitize_text(text: str) -> str:
+    """Remove all symbols and collapse spaces in a text string.
+
+    Args:
+        text (str): _description_
+
+    Returns:
+        str: _description_
+    """
+    result = ''.join(
+        c for c in text
+        if not unicodedata.category(c).startswith(("S", "C"))
+    )
+    result = re.sub(r"\s+", " ", result).strip()
+    return result
 
 
 def is_valid_spotify_url(url: str) -> bool:
@@ -167,7 +208,7 @@ def is_actual_sync_file(url: str, spotdl_file: str, ignore_params: bool = True) 
 
 def sort_songs(songs: list[Song]) -> list[Song]:
     sorted_songs = list.copy(songs)
-    sorted_songs.sort(key=lambda x: x.list_position or 0)
+    sorted_songs.sort(key=lambda x: x.list_position or len(songs))
     return sorted_songs
 
 
