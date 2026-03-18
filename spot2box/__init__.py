@@ -70,4 +70,3 @@ class Spot2Box():
 
         # Sync tracks to the playlist
         self.rb_wrapper.sync_playlist(rb_playlist_name, tracks)
-        self.rb_wrapper.apply_changes()
