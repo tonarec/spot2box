@@ -1,13 +1,11 @@
 """Module that handle a wrapper for SpotDL"""
 
-import json
 import logging
-from copy import deepcopy
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Union
 
+from spotdl.console.download import download
 from spotdl.console.entry_point import generate_initial_config
-from spotdl.console.save import save
 from spotdl.console.sync import sync
 from spotdl.download.downloader import Downloader
 from spotdl.types.options import DownloaderOptions, SpotifyOptions
@@ -18,9 +16,11 @@ from spotdl.utils.config import (DOWNLOADER_OPTIONS, SPOTIFY_OPTIONS,
                                  create_settings_type, get_config)
 from spotdl.utils.spotify import SpotifyClient
 
-import utils
-from core.config import Spot2BoxConfig, get_sync_folder_path
-from models.spotdl_file import SpotDLFile
+from spot2box import utils
+from spot2box.core.config import Spot2BoxConfig, get_sync_folder_path
+from spot2box.models.spotdl_file import SpotDLFile
+
+SpotDLOrPath = Union[SpotDLFile, str]
 
 
 class SpotDLWrapper:
@@ -43,7 +43,8 @@ class SpotDLWrapper:
 
         # Ensure correct parameters for spot2box
         spotdl_config['load_config'] = True
-        spotdl_config['sync_without_deleting'] = True
+        spotdl_config['sync_without_deleting'] = True  # Avoid deleting tracks
+        spotdl_config["lyrics_providers"] = []  # Avoid searching for lyrics
         args = self.config.to_namespace()
 
         # Creating correct settings types
@@ -60,73 +61,90 @@ class SpotDLWrapper:
         self.spotify_client = SpotifyClient.init(**spotify_options)
         self.downloader = Downloader(downloader_options)
 
-    ############
-    # File
-    ############
-    def compute_filepath(self, track: Song) -> Path:
+    def compute_filepath(self, song: Song) -> Path:
         """Compute the correct filpath for the song according to the settings.
 
         Args:
-            track (Song): A song object to use as reference
+            song (Song): A song object to use as reference
 
         Returns:
             Path: The corresponding path of the song
         """
+
         filepath = formatter.create_file_name(
-            track,
+            song,
             self.config.output,
             self.downloader.settings["format"],
             self.downloader.settings["restrict"],
         )
         return filepath
 
-    def process_spotdl_file(self, filepath: str) -> SpotDLFile:
-        # From a spotdl file process the normal sync mode
-        # Then load the spotdl file and return the corresponding
-        spotdl_file = SpotDLFile.from_filepath(filepath)
-        sync(spotdl_file.path, self.downloader)
+    def process_spotdl_file(self, file: SpotDLOrPath) -> SpotDLFile:
+        """Process a spotdl file in sync mode. Then load the spotdl file and return
+        the corresponding SpotDLFile object.
+
+        Args:
+            filepath (str): The filepath of the spotdl file
+
+        Returns:
+            SpotDLFile: An instance corresponding to the spotdl file
+        """
+
+        if isinstance(file, str):
+            spotdl_file = SpotDLFile.from_filepath(file)
+        else:
+            spotdl_file = file
+
+        sync(query=[spotdl_file.path.as_posix()], downloader=self.downloader)
         spotdl_file.reload()
         return spotdl_file
 
     def process_spotify_url(self, url: str, filename: str = None) -> SpotDLFile:
-        # From a Spotify URL process the sync mode with save path enabled
-        # Then load the spotdl file and return the corresponding object
-        metadata = self.get_playlist_metadata(url)
+        """Process a Spotify URL in sync mode if enabled, or download mode. Then load 
+        the spotdl file and return the corresponding SpotDLFile object.
+
+        This method search for a corresponding spotdl file in the appdata directory.
+        If a spotdl file is found, it will be updated with the new URL.
+
+        If sync mode is enabled, a spotdl file is created in the appdata directory.
+
+        Args:
+            url (str): The Spotify playlist URL to process
+            filename (str, optional): A specific filename for the sync file. Defaults to None.
+
+        Returns:
+            SpotDLFile: An instance corresponding to the spotdl file
+        """
+
+        # Check for corresponding spotdl file
+        spotdl_file = utils.search_first_spotdl_file(url)
+        if spotdl_file:
+            spotdl_file.update_query(url)
+            return self.process_spotdl_file(file=spotdl_file)
+
+        # Process URL directly
+        if not self.config.save_sync_file:
+            download(query=[url], downloader=self.downloader)
+            return None
+
+        # Otherwise process a new URL
         if not filename:
-            name = metadata['name']
-            description = metadata['description']
-            filename = utils.compute_spotdl_filename(
-                playlist_name=name,
-                playlist_description=description
-            )
-            filename += '.spotdl'
+            filename = utils.compute_spotdl_filename(url)
 
         filepath = get_sync_folder_path().joinpath(filename)
 
-        # Copy needed to not overwrite settings
-        downloader = deepcopy(self.downloader)
-        downloader.settings["save_file"] = filename
-        save(query=url, downloader=downloader)
+        # Update downloader settings and sync
+        self.downloader.settings["save_file"] = filepath
+        sync(query=[url], downloader=self.downloader)
+
         spotdl_file = SpotDLFile.from_filepath(filepath)
         return spotdl_file
 
-    ############
-    # Songs
-    ############
-    def get_songs(self, filepath: str) -> list[Song]:
-        with open(filepath, 'r', encoding='utf-8') as f:
-            file_data = json.load(f)
-
-        songs = []
-        for song_data in file_data['songs']:
-            song = Song.from_dict(song_data)
-            songs.append(song)
-        return songs
-
-    def sort_songs(self, tracks: list[Song]) -> list[Song]:
-        sorted_tracks = list.copy(tracks)
-        sorted_tracks.sort(key=lambda x: x.list_position or 0)
-        return sorted_tracks
+    @classmethod
+    def sort_songs(self, songs: list[Song]) -> list[Song]:
+        sorted_songs = list.copy(songs)
+        sorted_songs.sort(key=lambda x: x.list_position or 0)
+        return sorted_songs
 
     def compare_files(self):
         # Make a copy of the current spotdl file
@@ -135,26 +153,29 @@ class SpotDLWrapper:
         # Return the list of added and deleted tracks (path)
         pass
 
-    ############
-    # Metadata
-    ############
     def get_playlist_metadata(self, url: str) -> Dict[str, Any]:
+        """Get a dictionary with the metadata of the playlist.
+
+        Args:
+            url (str): A Spotify playlist URL
+
+        Returns:
+            Dict[str, Any]: The metadata
+        """
         metadata, _ = Playlist.get_metadata(url)
         return metadata
 
-    def get_genre(self, track: Song, pos=0) -> str:
-        if len(track.genres) > 0:
-            return track.genres[pos]
+    def get_genre(self, song: Song, pos=0) -> str:
+        if len(song.genres) > 0:
+            return song.genres[pos]
         return ''
 
-    ############
-    # Utils
-    ############
     def get_id3_separator(self) -> str:
-        """Get the configured ID3 separator or default if not found in config
+        """Get the configured ID3 separator or default if not found in config.
 
         Returns:
             str: The separator
         """
+
         default = DOWNLOADER_OPTIONS.get('id3_separator')
         return self.downloader.settings.get('id3_separator', default)

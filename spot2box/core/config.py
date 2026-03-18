@@ -1,5 +1,6 @@
 """Module for Spot2Box configuration"""
 import json
+import os
 from argparse import Namespace
 from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
@@ -34,7 +35,9 @@ def get_sync_folder_path() -> Path:
     Returns:
         Path: The path of the sync folder
     """
-    return get_appdata_path().joinpath(SYNC_FOLDER_NAME)
+    sync_folder = get_appdata_path().joinpath(SYNC_FOLDER_NAME)
+    os.makedirs(sync_folder, exist_ok=True)
+    return sync_folder
 
 
 def get_config_filepath() -> Path:
@@ -46,7 +49,7 @@ def get_config_filepath() -> Path:
     return get_appdata_path().joinpath(CONFIG_FILENAME)
 
 
-def get_logs_filepath() -> Path:
+def get_log_filepath() -> Path:
     """Get the log file path.
 
     Returns:
@@ -81,6 +84,7 @@ class Spot2BoxConfig():
     output: str = None
     urls: list[str] = field(default_factory=list)
     spotdl_files: list[str] = field(default_factory=list)
+    save_sync_file: bool = True
 
     # Spotify
     spotify_client: str = None
@@ -89,8 +93,11 @@ class Spot2BoxConfig():
     # Rekordbox
     rekordbox_xml: str = None
     rekordbox_path: str = None
-    delete_last_track: bool = False
+    add_only: bool = False
+    sort_playlist: bool = True
+    delete_standalone_track: bool = False
     force_kill: bool = False
+    open_rekordbox: bool = True
 
     @classmethod
     def from_namespace(cls, args: Namespace) -> "Spot2BoxConfig":
