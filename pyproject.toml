@@ -1,0 +1,46 @@
+[project]
+name = "spot2box"
+version = "0.1.0"
+requires-python = ">=3.10"
+
+description = "Unlock the potential of your Spotify playlists in Rekordbox."
+authors = [{ name="tonarec", email="tonarec@no-reply.com" }]
+readme = "README.md"
+license = "GPL-3.0"
+license-files = ["LICENSE"]
+
+keywords = [
+    "spot2box",
+    "spotify",
+    "rekordbox",
+    "playlist",
+    "manager",
+    "downloader",
+    "music"
+]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: End Users/Desktop",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Multimedia :: Sound/Audio",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "argparse",
+    "platformdirs",
+    "pyrekordbox>=0.4.4",
+    "spotdl>=4.4.3",
+    "spotipy>=2.26.0",
+]
+
+
+[project.urls]
+Source = "https://github.com/tonarec/spot2box"
+Tracker = "https://github.com/tonarec/spot2box/issues"
+
+[build-system]
+requires = ["hatchling >= 1.26"]
+build-backend = "hatchling.build"

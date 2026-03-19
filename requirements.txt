@@ -1,4 +1,5 @@
 argparse
 platformdirs
-pyrekordbox==0.4.4
-spotdl==4.4.3
+pyrekordbox>=0.4.4
+spotdl>=4.4.3
+spotipy>=2.26.0
