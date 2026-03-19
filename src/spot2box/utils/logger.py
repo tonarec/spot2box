@@ -1,9 +1,9 @@
 """Module that initialize the logger"""
 import logging
 import sys
+import tomllib as toml
 
 from spot2box.core import config
-from spot2box.utils import info
 
 
 def init_logger(level: int = logging.INFO):
@@ -21,7 +21,11 @@ def init_logger(level: int = logging.INFO):
                             logging.StreamHandler(sys.stdout)
                         ])
 
-    app_name = config.APP_NAME
-    version = info.get_version()
-    author = info.get_author()
+    with open("pyproject.toml", "rb") as f:
+        data = toml.load(f)
+
+    project_info = data['project']
+    app_name = project_info['name']
+    version = project_info['version']
+    author = project_info['authors'][0]['name']
     logging.info('%s v%s (%s)', app_name, version, author)
