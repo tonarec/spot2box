@@ -6,11 +6,10 @@ import json
 from dataclasses import dataclass
 from json import JSONDecodeError
 from pathlib import Path
-from typing import Any, Dict, Union
-
+from typing import Any, Dict
 from spotdl.types.song import Song
 
-PathLike = Union[Path, str]
+PathLike = Path | str
 
 
 class SpotDLFileError(Exception):
@@ -22,7 +21,7 @@ class SpotDLFileError(Exception):
 @dataclass
 class SpotDLFile():
     """
-    SpotDLFile class. Contains all the informations about a spotdl file.
+    SpotDLFile class. Contains all the data related to a spotdl file.
     """
 
     type: str
@@ -40,6 +39,7 @@ class SpotDLFile():
         Returns:
             SpotDLFile: The created instance.
         """
+
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
                 file_data = json.load(f)
@@ -87,9 +87,9 @@ class SpotDLFile():
             self.query = [url]
         elif self.query[0] != url:
             self.query[0] = url
-    
+
     def reload(self):
-        """Reloads the SpotDLFile fields.
+        """Reloads the SpotDLFile object fields.
 
         If the object was created with a filepath,
         it will use the same path to reload data.

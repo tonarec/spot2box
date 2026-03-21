@@ -1,4 +1,6 @@
-"""Module that handle a wrapper for Rekordbox"""
+"""
+Module that handle a wrapper for Rekordbox.
+"""
 
 import logging
 import os
@@ -6,7 +8,6 @@ import signal
 import time
 from collections import Counter
 from pathlib import Path
-from typing import Union
 
 import psutil
 from pyrekordbox import MasterDatabase, RekordboxXml
@@ -16,12 +17,16 @@ from pyrekordbox.masterdb import (DjmdAlbum, DjmdArtist, DjmdContent,
 
 from spot2box.core.config import Spot2BoxConfig
 
-PathLike = Union[Path, str]
-PlaylistLike = Union[DjmdPlaylist, str]
-ContentLike = Union[DjmdContent, PathLike]
+PathLike = Path | str
+PlaylistLike = DjmdPlaylist | str
+ContentLike = DjmdContent | PathLike
 
 
 class RekordboxWrapper():
+    """
+    Wrapper class for Rekordbox.
+    """
+
     def __init__(self, config: Spot2BoxConfig):
         logging.debug('Current loaded configuration')
         for line in pformat_config().split('\n'):
@@ -36,9 +41,13 @@ class RekordboxWrapper():
         self._detect_rekordbox(force_kill)
 
     def propagate_xml_to_database(self):
+        """Propagate the rekordbox.xml file into the database."""
+
         # TODO: Check if database is loaded instead
         if self._xml is None and self._db is None:
-            logging.warning('No XML configuration will be propagated')
+            logging.warning('No XML file will be propagated')
+
+        raise NotImplementedError
 
     def commit_changes(self):
         """Apply all pending changes to the database."""
@@ -46,15 +55,15 @@ class RekordboxWrapper():
         self._db.commit()
 
     def sync_playlist(self, playlist: PlaylistLike, tracks: list[PathLike]):
-        """Synchronize the playlist with a list of tracks.
+        """Synchronize a Rekordbox playlist with a list of tracks.
 
         This method search for tracks to add/remove in the playlist,
         and make the exact same playlist from the list. The list of tracks
         must be existing filepaths.
 
         Args:
-            playlist (PlaylistLike): _description_
-            tracks (list[PathLike]): _description_
+            playlist (PlaylistLike): Playlist name or `DjmdPlaylist`
+            tracks (list[PathLike]): List of track file paths.
         """
 
         # Get the playlist
@@ -93,7 +102,8 @@ class RekordboxWrapper():
                     self.remove_track_from_database(content)
 
         for content in contents_to_add:
-            self.add_track_to_playlist(path=content, playlist_name=playlist)
+            self.add_track_to_playlist(filepath=content,
+                                       playlist_name=playlist)
 
         # Reload playlist instance
         self.commit_changes()
@@ -129,19 +139,21 @@ class RekordboxWrapper():
         logging.debug('    Tracks removed from playlist: %d',
                       len(contents_to_remove))
 
-    def add_track_to_playlist(self, path: str, playlist_name: str, pos: int = None):
-        """Add a track to a playlist. The playlist will be created if does not exists in database.
+    def add_track_to_playlist(self, filepath: str, playlist_name: str, pos: int = None):
+        """Add a track to a playlist.
+
+        The playlist will be created if it does not exists in database.
 
         Args:
-            path (str): _description_
-            playlist_name (str): _description_
-            pos (int, optional): _description_. Defaults to None.
+            filepath (str): The track file path to add to playlist.
+            playlist_name (str): The name of the playlist to add the track to.
+            pos (int, optional): The position of the track in the playlist. Defaults to None.
         """
 
         # Get the track content
-        content = self.get_track_in_database(path)
+        content = self.get_track_in_database(filepath)
         if not content:
-            logging.warning('Track path not found: %s', path)
+            logging.warning('Track path not found: %s', filepath)
             return
 
         # Get the playlist
@@ -158,8 +170,13 @@ class RekordboxWrapper():
         # Finally add the track to playlist
         self._db.add_to_playlist(playlist, content, pos)
 
-    def remove_track_from_playlist(self, track: ContentLike, playlist: PlaylistLike, remove_occurences=True):
-        """This method removes all the occurences of the track in the playlist.
+    def remove_track_from_playlist(
+        self,
+        track: ContentLike,
+        playlist: PlaylistLike,
+        remove_occurences=True
+    ):
+        """This method removes all the occurences of a track in the playlist.
 
         Args:
             track (ContentLike): The `DjmContent` or a filepath to the track
@@ -198,6 +215,14 @@ class RekordboxWrapper():
             self._db.remove_from_playlist(plist, psong)
 
     def get_track_related_playlists(self, track: ContentLike) -> list[DjmdPlaylist]:
+        """Get the related Rekordbox playlists for a specific track.
+
+        Args:
+            track (ContentLike): A `DjmdContent` or filepath of the track to retrieve related playlists for.
+
+        Returns:
+            list[DjmdPlaylist]: List of related playlists for the track.
+        """
 
         playlists: set[DjmdPlaylist] = set()
 
@@ -205,7 +230,7 @@ class RekordboxWrapper():
         content = self._get_actual_content(track)
         if not content:
             logging.warning('Track path not found: %s', track)
-            return
+            return None
 
         # Check if the track is in the playlist
         result = self._db.get_playlist_songs(
@@ -222,18 +247,38 @@ class RekordboxWrapper():
         The path will be normalized to a POSIX-like representation to fit the Rekordbox Database.
 
         Args:
-            path (str): The path to search for
+            path (str): The path to search for.
 
         Returns:
-            DjmdContent: The content for this path
+            DjmdContent: The content for this path.
         """
+
         content = self._get_actual_content(path)
         if not content:
             logging.warning('Track path not found: %s', path)
             return None
         return content
 
-    def add_track_to_database(self, path: PathLike, title: str, artist: str, album: str, genre: str):
+    def add_track_to_database(
+            self,
+            path: PathLike,
+            title: str,
+            artist: str,
+            album: str,
+            genre: str
+    ):
+        """Add a track to the database.
+
+        This method method will add a track to the database and all its corresponding metadata,
+        such as track artist, track album, and track genre.
+
+        Args:
+            path (PathLike): The path of the track.
+            title (str): The title of the track.
+            artist (str): The artist of the track.
+            album (str): The album of the track.
+            genre (str): The genre of the track.
+        """
 
         path = Path(path).as_posix()
         logging.info('Adding track %s to database...', path)
@@ -260,6 +305,12 @@ class RekordboxWrapper():
         logging.debug('  Genre: %s', content.Genre)
 
     def remove_track_from_database(self, track: ContentLike):
+        """Removes a track from the database.
+
+        Args:
+            track (ContentLike): Track to remove from database.
+        """
+
         content = self._get_actual_content(track)
         if not content:
             logging.warning('File to remove not found: %s', track)
@@ -269,17 +320,44 @@ class RekordboxWrapper():
         logging.info('Track removed from database: %s', content.FolderPath)
 
     def _get_actual_playlist(self, playlist: PlaylistLike) -> DjmdPlaylist:
+        """Gets the actual DjmdPlaylist object from the database.
+
+        Args:
+            playlist (PlaylistLike): Playlist to get the actual object from the database.
+
+        Returns:
+            DjmdPlaylist: Actual DjmdPlaylist object from the database.
+        """
+
         if isinstance(playlist, str):
             playlist = self._db.get_playlist(Name=playlist).first()
         return playlist
 
     def _get_actual_content(self, content: ContentLike) -> DjmdContent:
+        """Gets the actual DjmdContent object from the database.
+
+        Args:
+            content (ContentLike): Content to get the actual object from the database.
+
+        Returns:
+            DjmdContent: Actual DjmdContent object from the database.
+        """
+
         if isinstance(content, PathLike):
             path = Path(content).as_posix()
             content = self._db.get_content(FolderPath=path).first()
         return content
 
     def get_or_create_playlist(self, name: str) -> DjmdPlaylist:
+        """Gets or creates a playlist in the database.
+
+        Args:
+            name (str): Playlist name to get or create.
+
+        Returns:
+            DjmdPlaylist: Playlist object from the database.
+        """
+
         playlist = self._get_actual_playlist(name)
         if playlist:
             logging.debug(
@@ -294,6 +372,15 @@ class RekordboxWrapper():
         return playlist
 
     def get_or_create_artist(self, name: str) -> DjmdArtist:
+        """Gets or creates an artist in the database.
+
+        Args:
+            name (str): Artist name to get or create.
+
+        Returns:
+            DjmdArtist: Artist object in the database.
+        """
+
         artist = self._db.get_artist(Name=name).first()
         if artist is not None:
             logging.debug('Found artist %s (%s) in database', name, artist.ID)
@@ -304,6 +391,16 @@ class RekordboxWrapper():
         return artist
 
     def get_or_create_album(self, name: str, artist_id: str) -> DjmdAlbum:
+        """Gets or creates an album in the database.
+
+        Args:
+            name (str): Album name to get or create.
+            artist_id (str): Artist ID of the album.
+
+        Returns:
+            DjmdAlbum: Album object in the database.
+        """
+
         album = self._db.get_album(Name=name, AlbumArtistID=artist_id).first()
         if album is not None:
             logging.debug('Found album %s (%s) in database', name, album.ID)
@@ -314,6 +411,15 @@ class RekordboxWrapper():
         return album
 
     def get_or_create_genre(self, name: str) -> DjmdGenre:
+        """Get or creates a genre in the database.
+
+        Args:
+            name (str): Genre name to get or create.
+
+        Returns:
+            DjmdGenre: Genre object in the database.
+        """
+
         genre = self._db.get_genre(Name=name).first()
         if genre is not None:
             logging.debug('Found genre %s (%s) in database', name, genre.ID)
@@ -324,7 +430,12 @@ class RekordboxWrapper():
         return genre
 
     def _get_pids(self) -> list[int]:
-        """Get a list of running pids"""
+        """Get a list of running pids.
+
+        This function search for all running Rekordbox processes.
+        It is used to detects if Rekordbox is running before updating the database.
+        """
+
         pids = []
         for proc in psutil.process_iter():
             try:
@@ -337,7 +448,12 @@ class RekordboxWrapper():
         return pids
 
     def _detect_rekordbox(self, force_kill=False):
-        """Detect Rekordbox process if exists and block the application until closed."""
+        """Detect Rekordbox process if exists and block the application until closed.
+
+        Args:
+            force_kill (bool): If True, kill Rekordbox process if running.
+        """
+
         pids = self._get_pids()
         if not pids:
             return
@@ -357,25 +473,3 @@ class RekordboxWrapper():
                 logging.info('All Rekordbox processes closed.')
                 return
             time.sleep(2)
-
-    def print_playlists(self, expand=False):
-        playlists = self._db.get_playlist()
-        for playlist in playlists:
-            logging.info('Playlist: %s (%s)', playlist.Name, playlist.ID)
-            if expand:
-                songs = playlist.Songs
-                for song in songs:
-                    content: DjmdContent = song.Content
-                    logging.debug(
-                        '\t%s - %s (%s)', content.ArtistName, content.Title, content.FolderPath
-                    )
-
-    def print_artists(self):
-        artists: list[DjmdArtist] = self._db.get_artist()
-        for artist in artists:
-            logging.debug('Artist: %s (%s)', artist.Name, artist.ID)
-
-    def print_albums(self):
-        albums: list[DjmdArtist] = self._db.get_album()
-        for album in albums:
-            logging.debug('Album: %s (%s)', album.Name, album.ID)

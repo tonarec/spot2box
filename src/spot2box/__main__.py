@@ -1,4 +1,6 @@
-"""Main module of SpotBox"""
+"""
+Main module of SpotBox.
+"""
 
 import argparse
 import logging
@@ -38,7 +40,10 @@ logger.init_logger(level=logging.DEBUG)
 
 
 def main():
-    """Main function of SpotBox"""
+    """
+    Entry point of Spot2Box CLI.
+    """
+
     args = parser.parse_args()
     config = get_config()
     config.override(args)

@@ -1,4 +1,7 @@
-"""Module for Spot2Box configuration"""
+"""
+Module that handle Spot2Box configuration.
+"""
+
 import json
 import os
 from argparse import Namespace
@@ -17,12 +20,13 @@ def get_appdata_path() -> Path:
     """Get the path to the spot2box data folder. If the folder does not exists, it will be created.
 
     Returns:
-        Path: _description_
+        Path: The path of the Spot2Box data folder
     """
+
     dirs = PlatformDirs(
         appname=APP_NAME,
         appauthor=False,
-        roaming=True,
+        roaming=False,
         ensure_exists=True
     )
     appdata_dir = dirs.user_data_dir
@@ -35,6 +39,7 @@ def get_sync_folder_path() -> Path:
     Returns:
         Path: The path of the sync folder
     """
+
     sync_folder = get_appdata_path().joinpath(SYNC_FOLDER_NAME)
     os.makedirs(sync_folder, exist_ok=True)
     return sync_folder
@@ -46,6 +51,7 @@ def get_config_filepath() -> Path:
     Returns:
         Path: The path of the config file
     """
+
     return get_appdata_path().joinpath(CONFIG_FILENAME)
 
 
@@ -55,6 +61,7 @@ def get_log_filepath() -> Path:
     Returns:
         Path: The path of the log file
     """
+
     return get_appdata_path().joinpath(LOG_FILENAME)
 
 
@@ -62,7 +69,7 @@ def get_config() -> "Spot2BoxConfig":
     """Get the Spot2Box config. Create a default one if not found in the appdata directory.
 
     Returns:
-        Spot2BoxConfig: An object of the existing configuration, or defaults.
+        Spot2BoxConfig: A configuration instance of the existing configuration, or defaults.
     """
 
     config_file = get_config_filepath()
@@ -78,7 +85,9 @@ def get_config() -> "Spot2BoxConfig":
 
 @dataclass
 class Spot2BoxConfig():
-    """Handle core settings for Spot2Box"""
+    """
+    Handle core configuration for Spot2Box.
+    """
 
     # Spot2Box
     output: str = None
@@ -101,16 +110,19 @@ class Spot2BoxConfig():
 
     @classmethod
     def from_namespace(cls, args: Namespace) -> "Spot2BoxConfig":
-        """Create a Spot2BoxConfig object from a Namespace. Only takes arguments that matches the configuration.
+        """Create a Spot2BoxConfig instance from a Namespace. Only takes arguments that matches
+        the configuration.
 
-        If an arguments as not been specified from the CLI, the defaults value from the configuration will be used.
+        If an argument as not been specified from the CLI, the current value from
+        the configuration will be used.
 
         Args:
-            args (Namespace): _description_
+            args (Namespace): The Namespace object to create the instance from.
 
         Returns:
-            Spot2BoxConfig: _description_
+            Spot2BoxConfig: The Spot2BoxConfig instance.
         """
+
         settings = {}
 
         for f in fields(cls):
@@ -125,17 +137,19 @@ class Spot2BoxConfig():
         """Create a Namespace object from the instance.
 
         Returns:
-            Namespace: _description_
+            Namespace: The Namespace object created from the instance.
         """
+
         args = Namespace(**asdict(self))
         return args
 
     def override(self, args: Namespace):
-        """Override the configuration values with a Namespace instance.
+        """Override the configuration fields with a Namespace object.
 
         Args:
-            args (Namespace): The Namespace to override configuration fields
+            args (Namespace): The Namespace object used to override the configuration fields.
         """
+
         for f in fields(self):
             key = f.name
             value = getattr(args, key, None)
@@ -143,7 +157,7 @@ class Spot2BoxConfig():
                 setattr(self, key, value)
 
     def save(self):
-        """Save the configuration to the config"""
+        """Save the configuration fields to the configuration file."""
 
         config_file = get_config_filepath()
         with open(config_file, 'w', encoding='utf-8') as f:

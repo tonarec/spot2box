@@ -1,4 +1,7 @@
-"""Module that initialize the logger"""
+"""
+Module that initialize the logger.
+"""
+
 import logging
 import sys
 import tomllib as toml
@@ -10,8 +13,9 @@ def init_logger(level: int = logging.INFO):
     """Initialize the logger.
 
     Args:
-        level (int): The logging level
+        level (int): The logging level.
     """
+
     filepath = config.get_log_filepath()
     logging.basicConfig(level=level,
                         format='%(asctime)s | %(levelname)-7s | %(module)-9s |  %(message)s',
