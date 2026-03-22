@@ -4,7 +4,7 @@
 
 # Spot2Box - Spotify to Rekordbox Playlist Managaer
 
-🎧 *Harness the power of your Spotify playlists in Rekordbox.*
+🎧 *Unlock the potential of your Spotify playlists in Rekordbox.*
 
 **Spot2Box** bridges the gap between your Spotify library and your DJ sets.
 Easily download your favorite Spotify's playlists, and sync them in Rekordbox effortless. Just copy, paste, sync, and mix!

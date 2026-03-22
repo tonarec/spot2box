@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, Union
+from typing import Any, Dict
 
 from spotdl.console.download import download
 from spotdl.console.entry_point import generate_initial_config
@@ -20,24 +20,36 @@ from spot2box import utils
 from spot2box.core.config import Spot2BoxConfig, get_sync_folder_path
 from spot2box.models.spotdl_file import SpotDLFile
 
-SpotDLOrPath = Union[SpotDLFile, str]
+SpotDLOrPath = SpotDLFile | str
 
 
 class SpotDLWrapper:
+    """
+    Wrapper class wrapper for SpotDL.
+    """
 
     config: Spot2BoxConfig
 
     def __init__(self, config: Spot2BoxConfig):
         self.config = config
-        self.__check_ffmpeg_install()
-        self.__init_spotdl_config()
+        self._check_ffmpeg_install()
+        self._init_spotdl_config()
 
-    def __check_ffmpeg_install(self):
+    def _check_ffmpeg_install(self):
+        """This method checks if ffmpeg is installed for spotdl, and download it if not."""
+
         if ffmpeg.is_ffmpeg_installed() is False:
             logging.info("FFmpeg is not installed. Downloading FFmpeg...")
             ffmpeg.download_ffmpeg()
 
-    def __init_spotdl_config(self) -> bool:
+    def _init_spotdl_config(self):
+        """This method initialize the spotdl configuration and settings for both Spotify
+        and the music downloader.
+
+        A default configuration is created if no one found.
+        Some settings are overrided for better compatibility with spot2box.
+        """
+
         generate_initial_config()
         spotdl_config = get_config()
 
@@ -62,13 +74,13 @@ class SpotDLWrapper:
         self.downloader = Downloader(downloader_options)
 
     def compute_filepath(self, song: Song) -> Path:
-        """Compute the correct filpath for the song according to the settings.
+        """Compute the correct filepath for the song depending on the settings.
 
         Args:
-            song (Song): A song object to use as reference
+            song (Song): A song object to use as reference.
 
         Returns:
-            Path: The corresponding path of the song
+            Path: The computed filepath of the song.
         """
 
         filepath = formatter.create_file_name(
@@ -80,14 +92,16 @@ class SpotDLWrapper:
         return filepath
 
     def process_spotdl_file(self, file: SpotDLOrPath) -> SpotDLFile:
-        """Process a spotdl file in sync mode. Then load the spotdl file and return
-        the corresponding SpotDLFile object.
+        """Process a spotdl file in sync mode.
+
+        Download track in sync mode from a spotdl file, then load the spotdl file and return
+        the corresponding SpotDLFile instance.
 
         Args:
-            filepath (str): The filepath of the spotdl file
+            filepath (str): The filepath of the spotdl file.
 
         Returns:
-            SpotDLFile: An instance corresponding to the spotdl file
+            SpotDLFile: An instance to handle data of the spotdl file.
         """
 
         if isinstance(file, str):
@@ -100,8 +114,10 @@ class SpotDLWrapper:
         return spotdl_file
 
     def process_spotify_url(self, url: str, filename: str = None) -> SpotDLFile:
-        """Process a Spotify URL in sync mode if enabled, or download mode. Then load 
-        the spotdl file and return the corresponding SpotDLFile object.
+        """Process a Spotify URL in sync mode.
+
+        This method download songs from an URL, then loads the spotdl file and return
+        the corresponding SpotDLFile instance.
 
         This method search for a corresponding spotdl file in the appdata directory.
         If a spotdl file is found, it will be updated with the new URL.
@@ -109,11 +125,11 @@ class SpotDLWrapper:
         If sync mode is enabled, a spotdl file is created in the appdata directory.
 
         Args:
-            url (str): The Spotify playlist URL to process
+            url (str): The Spotify playlist URL to process.
             filename (str, optional): A specific filename for the sync file. Defaults to None.
 
         Returns:
-            SpotDLFile: An instance corresponding to the spotdl file
+            SpotDLFile: An instance corresponding to the spotdl file.
         """
 
         # Check for corresponding spotdl file
@@ -140,41 +156,39 @@ class SpotDLWrapper:
         spotdl_file = SpotDLFile.from_filepath(filepath)
         return spotdl_file
 
-    @classmethod
-    def sort_songs(self, songs: list[Song]) -> list[Song]:
-        sorted_songs = list.copy(songs)
-        sorted_songs.sort(key=lambda x: x.list_position or 0)
-        return sorted_songs
-
-    def compare_files(self):
-        # Make a copy of the current spotdl file
-        # Perform actions with sync
-        # Compare the new file and checks for addition/deletion of tracks
-        # Return the list of added and deleted tracks (path)
-        pass
-
     def get_playlist_metadata(self, url: str) -> Dict[str, Any]:
         """Get a dictionary with the metadata of the playlist.
 
         Args:
-            url (str): A Spotify playlist URL
+            url (str): A Spotify playlist URL.
 
         Returns:
-            Dict[str, Any]: The metadata
+            Dict[str, Any]: The metadata of the playlist.
         """
+
         metadata, _ = Playlist.get_metadata(url)
         return metadata
 
-    def get_genre(self, song: Song, pos=0) -> str:
+    def get_genre(self, song: Song, index=0) -> str:
+        """Get the genre of a song.
+
+        Args:
+            song (Song): A song object.
+            index (int, optional): Index of genre to get. Defaults to 0.
+
+        Returns:
+            str: _description_
+        """
+
         if len(song.genres) > 0:
-            return song.genres[pos]
-        return ''
+            return song.genres[index]
+        return None
 
     def get_id3_separator(self) -> str:
         """Get the configured ID3 separator or default if not found in config.
 
         Returns:
-            str: The separator
+            str: The ID3 separator.
         """
 
         default = DOWNLOADER_OPTIONS.get('id3_separator')
