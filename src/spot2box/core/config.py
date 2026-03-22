@@ -104,6 +104,7 @@ class Spot2BoxConfig():
     rekordbox_path: str = None
     add_only: bool = False
     sort_playlist: bool = True
+    allow_duplicate: bool = False
     delete_standalone_track: bool = False
     force_kill: bool = False
     open_rekordbox: bool = True
