@@ -100,6 +100,10 @@ class Spot2Box():
                 logging.warning('Skipping track file not found: %s', filepath)
                 continue
 
+            if not self.config.allow_duplicate:
+                if filepath in tracks:
+                    continue
+
             tracks.append(filepath)
 
             # Check if track is present in the database
