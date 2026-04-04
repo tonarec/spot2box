@@ -10,7 +10,7 @@ from spot2box.core.config import get_config
 from spot2box.utils import logger
 from spot2box.utils.parser import parse_args
 
-logger.init_logger(level=logging.DEBUG)
+logger.init_logger(level=logging.INFO)
 
 
 def main():

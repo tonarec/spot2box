@@ -18,6 +18,7 @@ from spotdl.utils.spotify import SpotifyClient
 
 from spot2box import utils
 from spot2box.core.config import Spot2BoxConfig, get_sync_folder_path
+from spot2box.core.progress.custom import CustomProgressHandler
 from spot2box.models.spotdl_file import SpotDLFile
 
 SpotDLOrPath = SpotDLFile | str
@@ -57,6 +58,7 @@ class SpotDLWrapper:
         spotdl_config['load_config'] = True
         spotdl_config['sync_without_deleting'] = True  # Avoid deleting tracks
         spotdl_config["lyrics_providers"] = []  # Avoid searching for lyrics
+        spotdl_config["simple_tui"] = True # Avoid rich progress bar
         args = self.config.to_namespace()
 
         # Creating correct settings types
@@ -72,6 +74,7 @@ class SpotDLWrapper:
 
         self.spotify_client = SpotifyClient.init(**spotify_options)
         self.downloader = Downloader(downloader_options)
+        self.downloader.progress_handler = CustomProgressHandler()
 
     def compute_filepath(self, song: Song) -> Path:
         """Compute the correct filepath for the song depending on the settings.
